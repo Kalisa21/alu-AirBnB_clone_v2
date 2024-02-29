@@ -1,45 +1,28 @@
 #!/usr/bin/python3
-"""
-Fabric script for deploying an archive to web servers
-"""
+"""Fabric Script that distributes an archives"""
 
-from fabric.api import env, run, put
+
+from fabric.api import put, run, env
 from os.path import exists
-from datetime import datetime
+env.hosts = ['52.207.241.112', '54.162.135.106']
 
-env.hosts = ['54.174.30.113', '3.95.216.87']
-env.user = 'ubuntu'  # Replace with your SSH username
 
 def do_deploy(archive_path):
-    """Distribute an archive to web servers."""
-    if not exists(archive_path):
+    """Archives to web-servers"""
+    if exists(archive_path) is False:
         return False
-
     try:
-        # Upload the archive to /tmp/ directory on the server
+        file_n = archive_path.split("/")[-1]
+        no_ext = file_n.split(".")[0]
+        path = "/data/web_static/releases/"
         put(archive_path, '/tmp/')
-
-        # Extract the archive to /data/web_static/releases/<filename without extension>
-        filename = archive_path.split('/')[-1]
-        folder_name = filename.split('.')[0]
-        path_without_extension = '/data/web_static/releases/{}'.format(folder_name)
-
-        run('mkdir -p {}'.format(path_without_extension))
-        run('tar -xzf /tmp/{} -C {}'.format(filename, path_without_extension))
-
-        # Delete the archive from the server
-        run('rm /tmp/{}'.format(filename))
-
-        # Delete the symbolic link /data/web_static/current
-        run('rm -f /data/web_static/current')
-
-        # Create a new symbolic link /data/web_static/current
-        run('ln -s {} /data/web_static/current'.format(path_without_extension))
-
-        print('New version deployed!')
+        run('mkdir -p {}{}/'.format(path, no_ext))
+        run('tar -xzf /tmp/{} -C {}{}/'.format(file_n, path, no_ext))
+        run('rm /tmp/{}'.format(file_n))
+        run('mv {0}{1}/web_static/* {0}{1}/'.format(path, no_ext))
+        run('rm -rf {}{}/web_static'.format(path, no_ext))
+        run('rm -rf /data/web_static/current')
+        run('ln -s {}{}/ /data/web_static/current'.format(path, no_ext))
         return True
-
-    except Exception as e:
-        print('Deployment failed: {}'.format(e))
+    except:
         return False
-
